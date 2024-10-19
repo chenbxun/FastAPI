@@ -104,6 +104,7 @@ def transcribe_audio(id: str, file_content: bytes, file_suffix: str):
 
 def freq_cloud(id: str):
     """ 对转录后的文本进行词频统计，并基于统计结果生成词云数据 """
+    global tasks
     #等待任务创建
     while id not in tasks.keys(): 
         time.sleep(INTERVAL)
@@ -178,6 +179,7 @@ def freq_cloud(id: str):
 
 def optimize(id: str):
     """ 使用大语言模型优化转录文本,将其生成可读性强的博客或论文形式 """
+    global tasks
     #等待任务创建
     while id not in tasks.keys(): 
         time.sleep(INTERVAL)

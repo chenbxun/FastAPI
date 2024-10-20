@@ -33,7 +33,7 @@ number = 100
 #移除的特殊字符                        
 replace = u'[\t\n;:<>"~!@#$%^&*()\-+\[\]\|{}/*.,\?]+'
 #智谱清言api密钥
-ApiKey="cc290d43585f010c842256b1fe5e900d.mesgGSSRsUhFgGCs"
+ApiKey=""
 #支持的音频文件类型
 supported_audio_types = ['.wav', '.mp3', '.flac', '.m4a', '.aac', '.amr', '.ogg', '.opus', '.vorbis', '.wma']
 

@@ -11,7 +11,8 @@ import collections                  # 词频统计库
 import wordcloud                    # 词云展示库
 import matplotlib.pyplot as plt     # 图像展示库
 import zhipuai                      # 智谱清言api接口
-import matplotlib
+import matplotlib                   # 制作词云图像
+import traceback                    # 用于获取异常的堆栈信息
 matplotlib.use('Agg')  # 使用非交互式后端
 
 # 任务对象
@@ -32,12 +33,10 @@ language = None
 number = 100  
 #移除的特殊字符                        
 replace = u'[\t\n;:<>"~!@#$%^&*()\-+\[\]\|{}/*.,\?]+'
-#智谱清言api密钥
-ApiKey=""
 #支持的音频文件类型
 supported_audio_types = ['.wav', '.mp3', '.flac', '.m4a', '.aac', '.amr', '.ogg', '.opus', '.vorbis', '.wma']
 
-def transcribe_audio(id: str, file_content: bytes, file_suffix: str):
+def transcribe_audio(id: str, file_path: bytes, file_suffix: str):
     """ 利用本地库实现音频转文本 """
     global tasks, model, language, supported_audio_types
     # 新建一个任务对象，并将其保存在字典中
@@ -48,13 +47,12 @@ def transcribe_audio(id: str, file_content: bytes, file_suffix: str):
     if file_suffix not in supported_audio_types:
         print(f"{id} Unsupported file type {file_suffix}")
         tasks[id].status["transcription"] = 'failed'
+        # 删除原始音频文件
+        if os.path.exists(file_path):
+            print(f"Removing audio file {id}")
+            os.remove(file_path)
+        print(f"Finish processing audio file {id}")
         return
-
-    #保存路径
-    file_path = f"../input/{id}{file_suffix}"
-    #本地缓存音频文件
-    with open(file_path, "wb") as f:
-        f.write(file_content)
 
     # r = sr.Recognizer()
     # harvard = sr.AudioFile(file_path)
@@ -93,7 +91,7 @@ def transcribe_audio(id: str, file_content: bytes, file_suffix: str):
 
     except Exception as e:
         # 如果在转录过程中发生错误，更新任务状态为失败
-        print(f"Error transcripting audio file {id}: {e}")
+        print(f"Error transcripting audio file {id}: {e}\n{traceback.format_exc()}")
         tasks[id].status["transcription"] = 'failed'
     finally:
         # 删除原始音频文件
@@ -195,6 +193,30 @@ def optimize(id: str):
         tasks[id].status["optimization"] = 'failed'
         return
     
+    #获取api_key
+    try:
+        api_key = os.getenv('ZHIPUAI_API_KEY')
+        if api_key is None:
+            raise EnvironmentError(
+                "未找到环境变量 'ZHIPUAI_API_KEY'。\n"
+                "请按照以下步骤设置环境变量:\n"
+                "1. Windows系统:\n"
+                "    - 以管理员身份打开命令提示符或PowerShell,运行以下命令(密钥不要包含引号):\n"
+                "      setx ZHIPUAI_API_KEY 您的API密钥 /M\n"
+                "    - 重启计算机。\n"
+                "2. macOS或Linux系统:\n"
+                "    - 打开终端，运行以下命令:\n"
+                "      export ZHIPUAI_API_KEY='您的API密钥'\n"
+                "    - 将以上命令添加到您的shell配置文件(如.bashrc或.zshrc)中以使其持久化。\n"
+                "3. 在运行脚本之前可通过test_zhipuai_api_key.py程序测试环境变量是否已经正确设置。"
+            )
+        else:
+            print(f"API密钥已设置,值为: {api_key[:5]}...")  # 仅显示部分密钥，增加安全性
+    except EnvironmentError as e:
+        print(e)
+        tasks[id].status["optimization"] = 'failed'
+        return
+
     print(f"start optimization {id}")
     # time.sleep(30)
     with open("../input/text/prompt.txt", "r", encoding='utf-8') as f:  #打开文本
@@ -205,7 +227,7 @@ def optimize(id: str):
     question = prop + content
     prompt=[]
     prompt.append({"role": "user", "content": question})
-    client = zhipuai.ZhipuAI(api_key=ApiKey)
+    client = zhipuai.ZhipuAI(api_key=api_key)
     response = client.chat.completions.create(
         model="glm-4",  # 填写需要调用的模型名称
         messages=prompt
